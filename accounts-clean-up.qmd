@@ -1,0 +1,69 @@
+---
+title: "Learning Hub Accounts Clean Up"
+format: html
+---
+
+This script looks into the list of people that have participated in NCEAS Learning Hub course and identify which accounts can be deleted. To do this we look into 3 data sets:
+-   **participants_list:** List of all participants in a certain period of time. This information comes from collecting participants from every course run during the review period.
+-   **workbench_active_accounts:** list accounts that are not locked in Posit Workbench. This data comes directly form the Posit Workbench administrator account (Ask Thomas).
+-   **ldap:** list of LDAP accounts
+
+
+## Set up
+
+```{r}
+library(tidyverse)
+library(googlesheets4)
+```
+
+
+## Read in data
+The url in this step needs to be updated every time we are doing the clean up process.
+The `read_sheet()` function reads directly from the file's url. Copy and paste the url for each for the data sets need.
+
+
+```{r}
+
+## current year: 2023-2024
+
+participants_list <- read_sheet("https://docs.google.com/spreadsheets/d/1rXo78GuF7cC8vRaxi4kV7Hxc7eDQAk52c9ZTxKXG8RU/edit?gid=0#gid=0", sheet = "participants_list") %>% 
+    filter(!is.na(name))
+
+workbench_accounts <- read_sheet("https://docs.google.com/spreadsheets/d/1rXo78GuF7cC8vRaxi4kV7Hxc7eDQAk52c9ZTxKXG8RU/edit?gid=0#gid=0", sheet = "Active")
+
+
+ldap <- read_sheet("https://docs.google.com/spreadsheets/d/1rXo78GuF7cC8vRaxi4kV7Hxc7eDQAk52c9ZTxKXG8RU/edit?gid=0#gid=0", sheet = "LDAP")
+
+```
+
+
+## List of participants that accounts can be deleted
+
+```{r}
+participants_delete <- participants_list %>% 
+    filter(delete == TRUE)
+```
+
+Creating a list of the accounts that will not be deleted to consider in the next round of clean-up. The reason that we are not deleting this accounts is because this users are in a ongoing course at the time being.
+```{r}
+
+participants_keep <- participants_list %>% 
+    filter(delete == FALSE)
+
+```
+
+
+## List of accounts that can be bloked in Posit Workbench
+
+```{r}
+workbench_block <- participants_delete %>% 
+    left_join(workbench_accounts, by= "username") %>% 
+    filter(is.na(resident)) %>% 
+    select(name, last_name, username)
+```
+
+
+## LDAP accounts to be deleted
+
+
+
