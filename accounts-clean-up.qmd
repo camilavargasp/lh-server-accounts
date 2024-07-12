@@ -8,6 +8,8 @@ This script looks into the list of people that have participated in NCEAS Learni
 -   **workbench_active_accounts:** list accounts that are not locked in Posit Workbench. This data comes directly form the Posit Workbench administrator account (Ask Thomas).
 -   **ldap:** list of LDAP accounts
 
+This 3 data sets live in one Google Spreadsheet in the Learning Hub Drive under the _participants_ folder. The Google Sheet is named: `year(s)_learning-hub-participants-all-courses`
+
 
 ## Set up
 
@@ -18,7 +20,8 @@ library(googlesheets4)
 
 
 ## Read in data
-The url in this step needs to be updated every time we are doing the clean up process.
+The url in this step needs to be updated every time we are doing the clean up process to the most recent file.
+
 The `read_sheet()` function reads directly from the file's url. Copy and paste the url for each for the data sets need.
 
 
@@ -29,10 +32,10 @@ The `read_sheet()` function reads directly from the file's url. Copy and paste t
 participants_list <- read_sheet("https://docs.google.com/spreadsheets/d/1rXo78GuF7cC8vRaxi4kV7Hxc7eDQAk52c9ZTxKXG8RU/edit?gid=0#gid=0", sheet = "participants_list") %>% 
     filter(!is.na(name))
 
-workbench_accounts <- read_sheet("https://docs.google.com/spreadsheets/d/1rXo78GuF7cC8vRaxi4kV7Hxc7eDQAk52c9ZTxKXG8RU/edit?gid=0#gid=0", sheet = "Active")
+workbench_accounts <- read_sheet("https://docs.google.com/spreadsheets/d/1rXo78GuF7cC8vRaxi4kV7Hxc7eDQAk52c9ZTxKXG8RU/edit?gid=0#gid=0", sheet = "workbench")
 
 
-ldap <- read_sheet("https://docs.google.com/spreadsheets/d/1rXo78GuF7cC8vRaxi4kV7Hxc7eDQAk52c9ZTxKXG8RU/edit?gid=0#gid=0", sheet = "LDAP")
+ldap <- read_sheet("https://docs.google.com/spreadsheets/d/1rXo78GuF7cC8vRaxi4kV7Hxc7eDQAk52c9ZTxKXG8RU/edit?gid=0#gid=0", sheet = "ldap")
 
 ```
 
@@ -64,6 +67,43 @@ workbench_block <- participants_delete %>%
 
 
 ## LDAP accounts to be deleted
+
+```{r}
+ldap_clean <- ldap %>% 
+    mutate(username = str_extract(ldap_information, "uid=[^,]+,"),
+           username = str_remove(username, "uid="),
+           username = str_remove(username, ",.*"))
+
+
+ldap_delete <- participants_delete %>% 
+    left_join(ldap_clean, by = "username") %>% 
+    mutate(ldap_information = if_else(is.na(ldap_information), 
+                                            "probably already deleted", 
+                                            ldap_information)) %>% 
+    select(name, last_name,email, username, ldap_information) %>% 
+    arrange(desc(ldap_information))
+
+
+```
+
+## Save information into a Google Sheet
+Note: It is easier to create a Google Sheet in the Drive and then feed in the data from this script.
+
+Sheet ID: 1EXtvBynTxUheVDmitapGz4Aj4WXfAnmRdR8qPXNB7hk
+
+```{r}
+write_sheet(workbench_block,
+            ss = "1EXtvBynTxUheVDmitapGz4Aj4WXfAnmRdR8qPXNB7hk",
+            sheet = "workbench_block")
+
+
+write_sheet(ldap_delete,
+            ss = "1EXtvBynTxUheVDmitapGz4Aj4WXfAnmRdR8qPXNB7hk",
+            sheet = "ldap_delete")
+
+```
+
+
 
 
 
